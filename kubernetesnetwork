@@ -1,0 +1,79 @@
+KUBERNETES NETWORKING: THE COMPLETE GUIDE
+Kubernetes defines a network model that helps provide simplicity and consistency across a range of networking environments and network implementations. The Kubernetes network model provides the foundation for understanding how containers, pods, and services within Kubernetes communicate with each other. This guide explains the key concepts and how they fit together.
+
+This is part of an extensive series of guides about Kubernetes.
+
+In this guide, you will learn:
+
+The fundamental network behaviors the Kubernetes network model defines
+How Kubernetes works with a variety of different network implementations
+What Kubernetes services are
+How DNS works within Kubernetes
+What “NAT outgoing” is and when you would want to use it
+What “dual stack” is
+The Kubernetes network model
+The Kubernetes network model specifies:
+
+Every pod gets its own IP address
+Containers within a pod share the pod IP address and can communicate freely with each other
+Pods can communicate with all other pods in the cluster using pod IP addresses (without NAT)
+Isolation (restricting what each pod can communicate with) is defined using network policies
+As a result, pods can be treated much like VMs or hosts (they all have unique IP addresses), and the containers within pods can be treated like processes running within a VM or host (they run in the same network namespace and share an IP address). This model makes it easier for applications to be migrated from VMs and hosts to pods managed by Kubernetes. In addition, because isolation is defined using network policies rather than the structure of the network, the network remains simple to understand. This style of network is sometimes referred to as a “flat network.”
+
+Note that, although very rarely needed, Kubernetes does also support the ability to map host ports through to pods, or to run pods directly within the host network namespace sharing the host’s IP address.
+
+Kubernetes network implementations
+Kubernetes’s built-in network support, kubenet, can provide some basic network connectivity. However, it is more common to use third-party network implementations that plug into Kubernetes using the CNI (Container Network Interface) API.
+
+There are lots of different kinds of CNI plugins, but the two main ones are:
+
+Network plugins, which are responsible for connecting pods to the network
+IPAM (IP Address Management) plugins, which are responsible for allocating pod IP addresses
+Calico provides both network and IPAM plugins, but can also integrate and work seamlessly with some other CNI plugins, including AWS, Azure, and Google network CNI plugins, in addition to the host local IPAM plugin. This flexibility allows you to choose the best networking options for your specific needs and deployment environment.
+
+Learn more in our guide to determining the best networking option
+
+Kubernetes services
+Kubernetes services provide a way of abstracting access to a group of pods as a network service. The group of pods is usually defined using a label selector. Within the cluster, the network service is usually represented as a virtual IP address, and kube-proxy load balances connections to the virtual IP across the group of pods backing the service.
+
+The virtual IP is discoverable through Kubernetes DNS. The DNS name and virtual IP address remain constant for the lifetime of the service, even though the pods backing the service may be created or destroyed, and the number of pods backing the service may change over time.
+
+Kubernetes services can also define how a service is accessed from outside of the cluster, using one of the following:
+
+A node port, where the service can be accessed via a specific port on every node
+A load balancer, where a network load balancer provides a virtual IP address that the service can be accessed via from outside the cluster
+Note that when using Calico in on-premises deployments, you can also advertise service IP addresses, allowing services to be conveniently accessed without going via a node port or load balancer.
+
+Kubernetes DNS
+Each Kubernetes cluster provides a DNS service. Every pod and every service is discoverable through the Kubernetes DNS service.
+
+For example:
+
+Service: my-svc.my-namespace.svc.cluster-domain.example
+Pod: pod-ip-address.my-namespace.pod.cluster-domain.example
+Pod created by a deployment exposed as a service:pod-ip-address.deployment-name.my-namespace.svc.cluster-domain.example
+The DNS service is implemented as a Kubernetes service that maps to one or more DNS server pods (usually CoreDNS), which are scheduled just like any other pod. Pods in the cluster are configured to use the DNS service, with a DNS search list that includes the pod’s own namespace and the cluster’s default domain.
+
+This means that if there is a service named foo in Kubernetes namespace bar, then pods in the same namespace can access the service as foo, and pods in other namespaces can access the service as foo.bar.
+
+Kubernetes supports a rich set of options for controlling DNS in different scenarios. You can read more about these in the Kubernetes guide DNS for services and pods.
+
+NAT outgoing
+The Kubernetes network model specifies that pods must be able to communicate with each other directly using pod IP addresses. But it does not mandate that pod IP addresses are routable beyond the boundaries of the cluster. Many Kubernetes network implementations use overlay networks. Typically for these deployments, when a pod initiates a connection to an IP address outside of the cluster, the node hosting the pod will use SNAT (Source Network Address Translation) to map the source address of the packet from the pod IP to the node IP. This enables the connection to be routed across the rest of the network to the destination (because the node IP is routable). Return packets on the connection are automatically mapped back by the node, replacing the node IP with the pod IP before forwarding the packet to the pod.
+
+When using Calico, depending on your environment, you can generally choose whether you prefer to run an overlay network or have fully routable pod IPs. You can read more about this in the Calico determine best networking option guide. Calico also allows you to configure outgoing NAT for specific IP address ranges if more granularity is desired.
+
+Dual stack
+If you want to use a mix of IPv4 and IPv6, you can enable Kubernetes dual-stack mode. When enabled, all pods will be assigned both an IPv4 and IPv6 address, and Kubernetes services can specify whether they should be exposed as IPv4 or IPv6 addresses.
+------------------------------------------------------------------------------------
+Next steps:
+
+Video: Everything you need to know about Kubernetes networking on AWS
+Video: Everything you need to know about Kubernetes networking on Azure
+Video: Everything you need to know about Kubernetes networking on Google Cloud
+The Kubernetes Network Model
+See Additional Guides on Key Kubernetes Topics
+Together with our content partners, we have authored in-depth guides on several other topics that can also be useful as you explore the world of Kubernetes.
+
+Kubernetes Security
+Authored by Tigera
